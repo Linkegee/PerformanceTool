@@ -5,6 +5,7 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import time as t
+import numpy as np
 
 # 创建子图
 fig = plt.figure()
@@ -36,12 +37,7 @@ def get_memory_info():
         if not line.strip():
             continue
         key, value, unit = re.findall(r'^(\S+):\s+(\d+)(?:\s+(\S+))?', line)[0]
-        if unit.lower() == 'kb':
-            value = int(value) / 1024
-        elif unit.lower() == 'mb':
-            value = int(value)
-        elif unit.lower() == 'gb':
-            value = int(value) * 1024
+        value = int(value) / 1024
         memory_info_dict[key] = value
 
     return memory_info_dict
@@ -87,18 +83,18 @@ def update_chart(frame):
 
     with lock:
         # 更新MemFree信息
-        mem_free_history.insert(0, memory_info['MemFree'])
-        mem_free_history.pop()
+        mem_free_history.pop(0)
+        mem_free_history.append(memory_info['MemFree'])
         mem_free_line.set_data(time, mem_free_history)
 
         # 更新MemAvailable信息
-        mem_available_history.insert(0, memory_info['MemAvailable'])
-        mem_available_history.pop()
+        mem_available_history.pop(0)
+        mem_available_history.append(memory_info['MemAvailable'])
         mem_available_line.set_data(time, mem_available_history)
 
         # 更新SwapFree信息
-        swap_free_history.insert(0, memory_info['SwapFree'])
-        swap_free_history.pop()
+        swap_free_history.pop(0)
+        swap_free_history.append(memory_info['SwapFree'])
         swap_free_line.set_data(time, swap_free_history)
 
         # 更新x轴刻度和标签
@@ -130,6 +126,45 @@ vline = ax.axvline(x=0, color='b', linestyle='--', visible=False)
 # 创建一个文本框，用于显示meminfo
 textbox = ax.text(0.05, 0.95, '', transform=ax.transAxes, verticalalignment='top', bbox=dict(facecolor='white', alpha=0.7))
 
+# # 更新文本框
+# def update_textbox(x):
+#     log_dir = 'meminfo_logs'
+#     log_file = os.path.join(log_dir, f'{x:02d}.log')
+#     # if not os.path.exists(log_file):
+#     #     return 'No meminfo available'
+#
+#
+#     with open(log_file, 'r') as f:
+#         lines = f.readlines()
+#         content = ''
+#
+#         # 1.先找到最长的键
+#         # 2.然后使用字符串格式化功能使每行的键和值对齐
+#         max_key_len = max(len(line.strip().split(':')[0]) for line in lines)
+#         for line in lines:
+#             key, value = line.strip().split(':')
+#             # content += f'{key}: {value} KB\n'
+#             content += f'{key:<{max_key_len}}: {value:>3} KB\n'
+#
+#         return content
+# 更新文本框
+# def update_textbox(x):
+#     log_dir = 'meminfo_logs'
+#     log_file = os.path.join(log_dir, f'{x:02d}.log')
+#     if not os.path.exists(log_file):
+#         return 'No meminfo available'
+#
+#     with open(log_file, 'r') as f:
+#         lines = f.readlines()
+#         content = ''
+#         # Find the longest key
+#         max_key_len = max(len(line.strip().split(':')[0]) for line in lines)
+#         for line in lines:
+#             key, value = line.strip().split(':')
+#             # Format each line with aligned keys and values
+#             content += f'{key:<{max_key_len}}: {value:>3} KB\n'
+#         return content
+
 # 更新文本框
 def update_textbox(x):
     log_dir = 'meminfo_logs'
@@ -138,8 +173,19 @@ def update_textbox(x):
         return 'No meminfo available'
 
     with open(log_file, 'r') as f:
-        content = f.read()
+        lines = f.readlines()
+        content = ''
+        # Find the longest key
+        max_key_len = max(len(line.strip().split(':')[0]) for line in lines)
+        # Find the longest value
+        max_value_len = max(len(line.strip().split(':')[1].strip()) for line in lines)
+        for line in lines:
+            key, value = line.strip().split(':')
+            # Format each line with aligned keys and values
+            content += f'{key:<{max_key_len}}: {value.strip():>{max_value_len}} KB\n'
         return content
+
+
 
 # 鼠标事件
 def on_mouse_move(event):
